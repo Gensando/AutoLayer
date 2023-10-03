@@ -53,13 +53,12 @@ function AutoLayer:ProcessMessage(event, msg, name, _, channel)
             if string.find(msg, "%d+") then
                 self:DebugPrint(name, "requested specific layer", msg)
                 if string.find(string.lower(msg), "not.-%d+") then
-                    self:DebugPrint(name, "requested specific layer with not:", msg)
-                    self:DebugPrint("Ignoring him")
+                     self:DebugPrint(name, "contains 'not' in layer request, ignoring for now:", msg)
                     return
                 end
                 if not containsNumber(msg, addonTable.NWB.currentLayer) then
                     self:DebugPrint(name, "layer condition unsatisfied:", msg)
-                    self:DebugPrint("current layer:", addonTable.NWB.currentLayer)
+                    self:DebugPrint("Current layer:", addonTable.NWB.currentLayer)
                     return
                 end
                 self:DebugPrint(name, "layer condition satisfied", msg)
