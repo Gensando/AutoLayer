@@ -68,19 +68,14 @@ function AutoLayer:ProcessMessage(event, msg, name, _, channel)
 
             -- check if we've already invited this player in the last 2 hours
             if event ~= "CHAT_MSG_WHISPER" then
-                if self.cache[name_without_realm] then
-                    local entry = self.cache[name_without_realm]
+                if self:IsCacheEntryValid(name) then
+                    -- dont invite player if they got invited in the last 2 hours
+                    self:DebugPrint("Already invited", name, "in the last 2 hours")
+                    return
 
-                    -- delete players from cache that are over 2 hours
-                    if entry.time + self.invite_delay < time() then
-                        self:DebugPrint("Removing ", player.name, " from cache")
-                        self.cache[name_without_realm] = nil
-                    else
-                        -- dont invite player if they got invited in the last 2 hours
-                        self:DebugPrint("Already invited", name, "in the last 2 hours")
-                        return
-                    end
-
+                else
+                    -- invite delay finished or our layer changed since last request
+                    self:RemoveCacheEntry(name, "expired")
                 end
             end
 
@@ -118,12 +113,11 @@ function AutoLayer:ProcessSystemMessages(_, a)
     if segments[2] == "joins" then
         self.db.profile.layered = self.db.profile.layered + 1
         -- storing table, for some future parameters
-        self.cache[segments[1]] = { time = time() - 100 }
+        self:AddCacheEntry(segments[1])
     end
 
     if segments[2] == "declines" then
-        self.cache[segments[1]] = { time = time() - 100 }
-        self:DebugPrint("Adding ", segments[1], " to cache, reason: declined invite")
+        self:AddCacheEntry(segments[1], "declined invite")
     end
 
     if segments[3] == "invited" then

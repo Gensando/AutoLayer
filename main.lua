@@ -128,14 +128,50 @@ local defaults = {
 }
 
 -- put delay here for now, move to settings later
+-- can also check if our last layer is same and last time we checked layer
 AutoLayer.invite_delay = 60 * 60 * 2 -- 2hrs
 
 function AutoLayer:ClearCache()
-    for player_name, entry in pairs(self.cache) do
-        if entry.time + self.invite_delay < time() then
-            self.cache[player_name] = nil
+    for player_name, _ in pairs(self.cache) do
+        if self:IsCacheEntryValid(player_name) then
+            self:RemoveCacheEntry(player_name, "cache cleansing")
         end
     end
+end
+
+function AutoLayer:AddCacheEntry(player_name, reason)
+    reason = reason and reason or "none"
+    player_name = ({ strsplit("-", player_name) })[1]
+
+    self:DebugPrint("Adding ", player_name, " to cache, reason:", reason)
+
+    self.cache[player_name] = {
+        ["time"] = time() - 100,
+        ["layer"] = addonTable.NWB ~= nil and addonTable.NWB.currentLayer or nil
+    }
+end
+
+function AutoLayer:RemoveCacheEntry(player_name)
+    self:DebugPrint("Removing ", player_name, " from cache")
+    player_name = ({ strsplit("-", player_name) })[1]
+    self.cache[player_name] = nil
+end
+
+function AutoLayer:IsCacheEntryValid(player_name)
+    if addonTable.NWB == nil then return true end
+    if addonTable.NWB.currentLayer == 0 then return true end
+
+    player_name = ({ strsplit("-", player_name) })[1]
+
+    local entry = self.cache[player_name]
+
+    if entry == nil then return false end
+
+    local last_layer = entry.layer ~= nil and entry.layer or addonTable.NWB.currentLayer
+    if time() < entry.time + self.invite_delay and last_layer == addonTable.NWB.currentLayer then
+        return true
+    end
+    return false
 end
 
 ---@diagnostic disable-next-line: duplicate-set-field
