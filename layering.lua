@@ -3,8 +3,8 @@ local CTL = _G.ChatThrottleLib
 
 local kick_player = nil
 
-local function contains(it, value)
-    for v in it do
+local function containsNumber(str, value)
+    for v in string.gmatch(str, "%d+") do
         if tonumber(value) == tonumber(v) then
             return true
         end
@@ -50,15 +50,14 @@ function AutoLayer:ProcessMessage(event, msg, name, _, channel)
                 end
             end
 
-            local hasLayers = string.find(msg, "%d+")
-            if hasLayers then
+            if string.find(msg, "%d+") then
                 self:DebugPrint(name, "requested specific layer", msg)
                 if string.find(string.lower(msg), "not.-%d+") then
                     self:DebugPrint(name, "requested specific layer with not:", msg)
                     self:DebugPrint("Ignoring him")
                     return
                 end
-                if not contains(string.gmatch(msg, "%d+"), addonTable.NWB.currentLayer) then
+                if not containsNumber(msg, addonTable.NWB.currentLayer) then
                     self:DebugPrint(name, "layer condition unsatisfied:", msg)
                     self:DebugPrint("current layer:", addonTable.NWB.currentLayer)
                     return
