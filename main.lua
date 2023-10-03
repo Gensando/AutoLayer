@@ -127,12 +127,29 @@ local defaults = {
     }
 }
 
+-- put delay here for now, move to settings later
+AutoLayer.invite_delay = 60 * 60 * 2 -- 2hrs
+
+function AutoLayer:ClearCache()
+    for player_name, entry in pairs(self.cache) do
+        if entry.time + self.invite_delay < time() then
+            self.cache[player_name] = nil
+        end
+    end
+end
+
 ---@diagnostic disable-next-line: duplicate-set-field
 function AutoLayer:OnInitialize()
     LibStub("AceConfig-3.0"):RegisterOptionsTable("AutoLayer", options)
     self.db = LibStub("AceDB-3.0"):New("AutoLayerDB", defaults)
     self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("AutoLayer", "AutoLayer")
     local icon = ""
+
+    self.db.char.cache = self.db.char.cache and self.db.char.cache or {}
+    -- shortcut
+    self.cache = self.db.char.cache
+
+    self:ClearCache()
 
     if self.db.profile.enabled then
         icon = "Interface\\Icons\\INV_Bijou_Green"

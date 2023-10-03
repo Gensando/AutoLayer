@@ -1,11 +1,10 @@
 local addonName, addonTable = ...;
 local CTL = _G.ChatThrottleLib
 
-local player_cache = {}
 local kick_player = nil
 
-local function containsNumber(str, value)
-    for v in string.gmatch(str, "%d+") do
+local function contains(it, value)
+    for v in it do
         if tonumber(value) == tonumber(v) then
             return true
         end
@@ -51,45 +50,41 @@ function AutoLayer:ProcessMessage(event, msg, name, _, channel)
                 end
             end
 
-            self:DebugPrint("Matched trigger", trigger, "in message", msg)
-            if string.find(msg, "%d+") then
+            local hasLayers = string.find(msg, "%d+")
+            if hasLayers then
                 self:DebugPrint(name, "requested specific layer", msg)
                 if string.find(string.lower(msg), "not.-%d+") then
-                    self:DebugPrint(name, "contains 'not' in layer request, ignoring for now:", msg)
+                    self:DebugPrint(name, "requested specific layer with not:", msg)
+                    self:DebugPrint("Ignoring him")
                     return
                 end
-                if not containsNumber(msg, addonTable.NWB.currentLayer) then
+                if not contains(string.gmatch(msg, "%d+"), addonTable.NWB.currentLayer) then
                     self:DebugPrint(name, "layer condition unsatisfied:", msg)
-                    self:DebugPrint("Current layer:", addonTable.NWB.currentLayer)
+                    self:DebugPrint("current layer:", addonTable.NWB.currentLayer)
                     return
                 end
                 self:DebugPrint(name, "layer condition satisfied", msg)
             end
 
-            -- check if we've already invited this player in the last 5 minutes
+            self:DebugPrint("Matched trigger", trigger, "in message", msg)
+
+            -- check if we've already invited this player in the last 2 hours
             if event ~= "CHAT_MSG_WHISPER" then
-                for i, player in ipairs(player_cache) do
-                    -- delete players from cache that are over 5 minutes old
-                    if player.time + 300 < time() then
+                if self.cache[name_without_realm] then
+                    local entry = self.cache[name_without_realm]
+
+                    -- delete players from cache that are over 2 hours
+                    if entry.time + self.invite_delay < time() then
                         self:DebugPrint("Removing ", player.name, " from cache")
-                        table.remove(player_cache, i)
-                    end
-
-                    --self:DebugPrint("Checking ", player.name, " against ", name)
-                    --self:DebugPrint("Time: ", player.time, " + 300 < ", time(), " = ", player.time + 300 < time())
-
-                    local player_name_without_realm = ({ strsplit("-", player.name) })[1]
-
-                    -- dont invite player if they got invited in the last 5 minutes
-
-                    if player.name == name_without_realm or player_name_without_realm == name_without_realm and player.time + 300 > time() then
-                        self:DebugPrint("Already invited", name, "in the last 5 minutes")
+                        self.cache[name_without_realm] = nil
+                    else
+                        -- dont invite player if they got invited in the last 2 hours
+                        self:DebugPrint("Already invited", name, "in the last 2 hours")
                         return
                     end
+
                 end
             end
-
-            --end
 
             ---@diagnostic disable-next-line: undefined-global
             InviteUnit(name)
@@ -124,18 +119,20 @@ function AutoLayer:ProcessSystemMessages(_, a)
     -- X joins the party
     if segments[2] == "joins" then
         self.db.profile.layered = self.db.profile.layered + 1
-
-        table.insert(player_cache, { name = segments[1], time = time() - 100 })
+        -- storing table, for some future parameters
+        self.cache[segments[1]] = { time = time() - 100 }
     end
 
     if segments[2] == "declines" then
-        table.insert(player_cache, { name = segments[1], time = time() })
+        self.cache[segments[1]] = { time = time() - 100 }
         self:DebugPrint("Adding ", segments[1], " to cache, reason: declined invite")
     end
 
     if segments[3] == "invited" then
-        if addonTable.NWB ~= nil and addonTable.NWB.currentLayer ~= 0 and self.db.profile.whisper == true then
-            CTL:SendChatMessage("NORMAL", segments[4], "[AutoLayer] invited to layer " .. addonTable.NWB.currentLayer,
+        if addonTable.NWB ~= nil
+                and addonTable.NWB.currentLayer ~= 0
+                and self.db.profile.whisper == true then
+            CTL:SendChatMessage("NORMAL", segments[4], "[AutoLayer] layer " .. addonTable.NWB.currentLayer .. ", for specific layer try 'LFL 1,2,3,4' etc.",
                 "WHISPER", nil,
                 segments[4])
         end
